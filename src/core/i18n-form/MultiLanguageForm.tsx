@@ -49,6 +49,8 @@ export function MultiLanguageForm({
         }
     };
 
+    const showSpanish = process.env.NEXT_PUBLIC_SHOW_SPANISH_TRANSLATIONS === 'true';
+
     return (
         <div className="space-y-6">
             <Collapsible defaultOpen className="border border-border/50 rounded-lg bg-card overflow-hidden">
@@ -61,7 +63,7 @@ export function MultiLanguageForm({
                 </CollapsibleContent>
             </Collapsible>
 
-            {translateEndpoint && (
+            {translateEndpoint && showSpanish && (
                 <div className="flex">
                     <Button
                         type="button"

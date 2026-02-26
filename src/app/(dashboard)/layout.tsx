@@ -47,27 +47,27 @@ const contentManagement = [
         icon: FileText,
         children: [
             { name: 'Authors', href: '/authors' },
-            { name: 'Category', href: '/category' },
+            { name: 'Categories', href: '/categories' },
         ]
     },
-    { name: 'Brands', href: '/brands', icon: ImageIcon },
-    { name: 'Testimonials', href: '/testimonials', icon: MessageSquare },
-    { name: 'Software', href: '/software', icon: Monitor },
-    { name: 'Projects', href: '/projects', icon: BarChart },
-    {
-        name: 'Mobile Apps',
-        href: '/mobile-apps',
-        icon: Smartphone,
-        children: [
-            { name: 'Mobile Lists', href: '/mobile-lists' },
-        ]
-    },
-    { name: 'Faqs', href: '/faqs', icon: HelpCircle },
+    // { name: 'Brands', href: '/brands', icon: ImageIcon },
+    // { name: 'Testimonials', href: '/testimonials', icon: MessageSquare },
+    // { name: 'Software', href: '/software', icon: Monitor },
+    // { name: 'Projects', href: '/projects', icon: BarChart },
+    // {
+    //     name: 'Mobile Apps',
+    //     href: '/mobile-apps',
+    //     icon: Smartphone,
+    //     children: [
+    //         { name: 'Mobile Lists', href: '/mobile-lists' },
+    //     ]
+    // },
+    // { name: 'Faqs', href: '/faqs', icon: HelpCircle },
 ];
 
 const bottomNavigation = [
     { name: 'App Settings', href: '/settings/app', icon: Settings },
-    { name: 'Company Settings', href: '/settings/company', icon: Settings },
+    // { name: 'Company Settings', href: '/settings/company', icon: Settings },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -107,7 +107,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <Sidebar className="border-r">
                     <SidebarHeader className="flex h-16 items-center border-b px-6">
                         <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg">
-                            CMS Admin
+                            <img src="/translockit.png" alt="Translockit" className="h-16 w-auto" />
                         </Link>
                     </SidebarHeader>
                     <SidebarContent>

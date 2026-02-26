@@ -8,25 +8,46 @@ import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
+import { apiClient } from '@/core/api/client';
 
-interface AboutItem {
-    id: string;
-    image: string;
-    is_active: boolean;
-    title: string;
-    description: string;
-    lang: string;
+interface ArticleItem {
+    id: string; // Updated from number to string (UUID)
+    thumbnail: string; // Updated from image to thumbnail
+    is_published: boolean; // Updated from published to is_published
+    title: string; // Direct top-level property now
+    content: string; // Based on actual response instead of translations
+    tags: string[];
+    author: {
+        id: string;
+        name: string;
+    } | null;
+    category: {
+        id: string;
+        name: string;
+    } | null;
+    published_at: string;
     created_at: string;
-    updated_at: string;
 }
 
-export function AboutsList() {
-    const { data, meta, isLoading, actions, state } = useDataTable<AboutItem>({
-        endpoint: '/abouts',
-        queryKey: ['abouts'],
+export function ArticlesList() {
+    const { data, meta, isLoading, actions, state, refetch } = useDataTable<ArticleItem>({
+        endpoint: '/articles',
+        queryKey: ['articles'],
     });
 
-    const columns: ColumnDef<AboutItem>[] = [
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this article?')) return;
+        try {
+            await apiClient.delete(`/articles/${id}`);
+            toast.success('Article deleted successfully');
+            refetch();
+        } catch (error) {
+            toast.error('Failed to delete article');
+            console.error(error);
+        }
+    };
+
+    const columns: ColumnDef<ArticleItem>[] = [
         {
             id: "select",
             header: ({ table }) => (
@@ -47,10 +68,10 @@ export function AboutsList() {
             enableHiding: false,
         },
         {
-            accessorKey: 'image',
+            accessorKey: 'thumbnail',
             header: 'Image',
             cell: ({ row }) => {
-                const url = row.getValue('image') as string;
+                const url = row.getValue('thumbnail') as string;
                 return (
                     <div className="relative h-10 w-10">
                         {url ? (
@@ -71,18 +92,27 @@ export function AboutsList() {
                     onClick={() => actions.handleSort('title')}
                 >
                     <span>Title</span>
-                    {/* Add sort icon here if needed */}
                 </div>
             ),
         },
         {
-            accessorKey: 'is_active',
+            id: 'category',
+            accessorFn: (row) => row.category?.name || '-',
+            header: 'Category',
+        },
+        {
+            id: 'author',
+            accessorFn: (row) => row.author?.name || '-',
+            header: 'Author',
+        },
+        {
+            accessorKey: 'is_published',
             header: 'Status',
             cell: ({ row }) => {
-                const isActive = row.getValue('is_active') as boolean;
+                const published = row.getValue('is_published') as boolean;
                 return (
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${isActive ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                        {isActive ? 'Active' : 'Inactive'}
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${published ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {published ? 'Published' : 'Draft'}
                     </span>
                 );
             },
@@ -94,12 +124,12 @@ export function AboutsList() {
                 const id = row.original.id;
                 return (
                     <div className="flex items-center gap-2">
-                        <Link href={`/abouts/${id}/edit`}>
+                        <Link href={`/articles/${id}/edit`}>
                             <Button variant="ghost" size="icon">
                                 <Edit className="h-4 w-4" />
                             </Button>
                         </Link>
-                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => toast.info('Delete is not implemented yet')}>
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(id)}>
                             <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>
@@ -111,8 +141,8 @@ export function AboutsList() {
     return (
         <div className="space-y-4 bg-white p-6 shadow-sm rounded-lg border">
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold tracking-tight">Abouts</h2>
-                <Link href="/abouts/create">
+                <h2 className="text-2xl font-bold tracking-tight">Articles</h2>
+                <Link href="/articles/create">
                     <Button>
                         <Plus className="mr-2 h-4 w-4" />
                         Add New
@@ -124,7 +154,7 @@ export function AboutsList() {
                 columns={columns}
                 data={data}
                 isLoading={isLoading}
-                searchPlaceholder="Search abouts..."
+                searchPlaceholder="Search articles..."
                 onSearch={actions.handleSearch}
                 searchValue={state.search}
                 meta={meta}

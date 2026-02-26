@@ -22,25 +22,25 @@ import { ImageDropzone } from '@/core/upload/ImageDropzone';
 import { RichEditor } from '@/core/editor/RichEditor';
 import { apiClient } from '@/core/api/client';
 
-const translationSchema = z.object({
-    title: z.string().min(1, 'Title is required'),
-    description: z.string().min(1, 'Description is required'),
-});
-
 const aboutSchema = z.object({
     image: z.any().optional(), // Can be string URL or File
-    published: z.boolean().default(true),
-    translations: z.object({
-        en: translationSchema,
-        es: translationSchema.default({ title: '', description: '' }),
+    is_active: z.boolean().default(true),
+    title: z.object({
+        en: z.string().min(1, 'Title (EN) is required'),
+        es: z.string().optional(),
     }),
+    description: z.object({
+        en: z.string().min(1, 'Description (EN) is required'),
+        es: z.string().optional(),
+    }),
+    lang: z.string().default('en'),
 });
 
 type AboutFormValues = any; // Bypass strict TS checks for dynamic dynamic schemas
 
 interface AboutFormProps {
     initialData?: AboutFormValues | null;
-    aboutId?: number;
+    aboutId?: string;
 }
 
 export function AboutForm({ initialData, aboutId }: AboutFormProps) {
@@ -48,32 +48,46 @@ export function AboutForm({ initialData, aboutId }: AboutFormProps) {
 
     const form = useForm<any>({
         resolver: zodResolver(aboutSchema),
-        defaultValues: initialData || {
-            published: true,
-            translations: {
-                en: { title: '', description: '' },
-                es: { title: '', description: '' },
-            },
+        defaultValues: initialData ? (() => {
+            const title = { en: initialData.title || '', es: '' };
+            const description = { en: initialData.description || '', es: '' };
+            if (initialData.translations && Array.isArray(initialData.translations)) {
+                initialData.translations.forEach((tr: any) => {
+                    if (tr.lang === 'es') {
+                        title.es = tr.title || '';
+                        description.es = tr.description || '';
+                    }
+                });
+            }
+            return {
+                ...initialData,
+                title,
+                description,
+                is_active: initialData.is_active ?? true,
+                image: initialData.image || null,
+                lang: initialData.lang || 'en',
+            };
+        })() : {
+            is_active: true,
+            title: { en: '', es: '' },
+            description: { en: '', es: '' },
+            lang: 'en',
         },
     });
 
     const onSubmit = async (data: AboutFormValues) => {
         try {
             const formData = new FormData();
-            formData.append('published', data.published ? '1' : '0');
+            formData.append('is_active', data.is_active ? '1' : '0');
+            formData.append('title[en]', data.title.en);
+            if (data.title.es) formData.append('title[es]', data.title.es);
+            formData.append('description[en]', data.description.en);
+            if (data.description.es) formData.append('description[es]', data.description.es);
+            formData.append('lang', data.lang || 'en');
 
             if (data.image instanceof File) {
                 formData.append('image', data.image);
             }
-
-            // Arrays/Objects in FormData for Laravel
-            Object.keys(data.translations).forEach((lang) => {
-                const tr = data.translations[lang as 'en' | 'es'];
-                if (tr) {
-                    formData.append(`translations[${lang}][title]`, tr.title);
-                    formData.append(`translations[${lang}][description]`, tr.description || '');
-                }
-            });
 
             if (initialData && aboutId) {
                 // Mock edit with spoofed METHOD for Laravel
@@ -124,10 +138,10 @@ export function AboutForm({ initialData, aboutId }: AboutFormProps) {
                                 <>
                                     <FormField
                                         control={form.control}
-                                        name={`translations.${lang}.title` as const}
+                                        name={`title.${lang}` as const}
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Title</FormLabel>
+                                                <FormLabel>Title ({lang.toUpperCase()})</FormLabel>
                                                 <FormControl>
                                                     <Input placeholder={`Title in ${lang.toUpperCase()}`} {...field} />
                                                 </FormControl>
@@ -137,10 +151,10 @@ export function AboutForm({ initialData, aboutId }: AboutFormProps) {
                                     />
                                     <FormField
                                         control={form.control}
-                                        name={`translations.${lang}.description` as const}
+                                        name={`description.${lang}` as const}
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Description</FormLabel>
+                                                <FormLabel>Description ({lang.toUpperCase()})</FormLabel>
                                                 <FormControl>
                                                     <RichEditor
                                                         value={field.value}
@@ -158,7 +172,7 @@ export function AboutForm({ initialData, aboutId }: AboutFormProps) {
 
                         <FormField
                             control={form.control}
-                            name="published"
+                            name="is_active"
                             render={({ field }) => (
                                 <FormItem className="flex flex-row items-center space-x-3 space-y-0 pt-4">
                                     <FormControl>
@@ -179,10 +193,7 @@ export function AboutForm({ initialData, aboutId }: AboutFormProps) {
 
                     <div className="flex gap-4 pt-4">
                         <Button type="submit" disabled={form.formState.isSubmitting} className="bg-orange-500 hover:bg-orange-600 text-white font-medium">
-                            {form.formState.isSubmitting ? 'Creating...' : 'Create'}
-                        </Button>
-                        <Button type="button" variant="secondary" className="font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 border-border border">
-                            Create & create another
+                            {form.formState.isSubmitting ? (aboutId ? 'Updating...' : 'Creating...') : (aboutId ? 'Update' : 'Create')}
                         </Button>
                         <Button
                             type="button"

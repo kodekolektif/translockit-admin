@@ -8,25 +8,39 @@ import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
+import { apiClient } from '@/core/api/client';
 
-interface AboutItem {
+interface AuthorItem {
     id: string;
-    image: string;
-    is_active: boolean;
+    profile: string;
+    name: string;
     title: string;
     description: string;
+    social_links: string;
     lang: string;
     created_at: string;
     updated_at: string;
 }
 
-export function AboutsList() {
-    const { data, meta, isLoading, actions, state } = useDataTable<AboutItem>({
-        endpoint: '/abouts',
-        queryKey: ['abouts'],
+export function AuthorsList() {
+    const { data, meta, isLoading, actions, state, refetch } = useDataTable<AuthorItem>({
+        endpoint: '/authors',
+        queryKey: ['authors'],
     });
 
-    const columns: ColumnDef<AboutItem>[] = [
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this author?')) return;
+        try {
+            await apiClient.delete(`/authors/${id}`);
+            toast.success('Author deleted successfully');
+            refetch();
+        } catch (error) {
+            toast.error('Failed to delete author');
+            console.error(error);
+        }
+    };
+
+    const columns: ColumnDef<AuthorItem>[] = [
         {
             id: "select",
             header: ({ table }) => (
@@ -47,44 +61,44 @@ export function AboutsList() {
             enableHiding: false,
         },
         {
-            accessorKey: 'image',
-            header: 'Image',
+            accessorKey: 'profile',
+            header: 'Profile',
             cell: ({ row }) => {
-                const url = row.getValue('image') as string;
+                const url = row.getValue('profile') as string;
                 return (
-                    <div className="relative h-10 w-10">
+                    <div className="relative h-10 w-10 overflow-hidden rounded-full">
                         {url ? (
-                            <img src={url.startsWith('/') && !url.startsWith('//') ? `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:8000'}${url}` : url} alt="thumbnail" className="rounded object-cover" />
+                            <img src={url.startsWith('/') && !url.startsWith('//') ? `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:8000'}${url}` : url} alt="profile" className="h-full w-full object-cover" />
                         ) : (
-                            <div className="h-full w-full bg-muted rounded flex items-center justify-center text-xs">No img</div>
+                            <div className="flex h-full w-full items-center justify-center bg-muted text-xs">No img</div>
                         )}
                     </div>
                 );
             },
         },
         {
-            id: 'title',
-            accessorFn: (row) => row.title || 'Unknown',
+            id: 'name',
+            accessorFn: (row) => row.name || 'Unknown',
             header: () => (
                 <div
                     className="flex cursor-pointer items-center space-x-2"
-                    onClick={() => actions.handleSort('title')}
+                    onClick={() => actions.handleSort('name')}
                 >
-                    <span>Title</span>
-                    {/* Add sort icon here if needed */}
+                    <span>Name</span>
                 </div>
             ),
         },
         {
-            accessorKey: 'is_active',
-            header: 'Status',
+            id: 'title',
+            accessorFn: (row) => row.title || '-',
+            header: 'Title',
+        },
+        {
+            accessorKey: 'lang',
+            header: 'Language',
             cell: ({ row }) => {
-                const isActive = row.getValue('is_active') as boolean;
-                return (
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${isActive ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                        {isActive ? 'Active' : 'Inactive'}
-                    </span>
-                );
+                const lang = row.getValue('lang') as string;
+                return <span className="uppercase">{lang}</span>;
             },
         },
         {
@@ -94,12 +108,12 @@ export function AboutsList() {
                 const id = row.original.id;
                 return (
                     <div className="flex items-center gap-2">
-                        <Link href={`/abouts/${id}/edit`}>
+                        <Link href={`/authors/${id}/edit`}>
                             <Button variant="ghost" size="icon">
                                 <Edit className="h-4 w-4" />
                             </Button>
                         </Link>
-                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => toast.info('Delete is not implemented yet')}>
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(id)}>
                             <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>
@@ -109,10 +123,10 @@ export function AboutsList() {
     ];
 
     return (
-        <div className="space-y-4 bg-white p-6 shadow-sm rounded-lg border">
+        <div className="space-y-4 rounded-lg border bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold tracking-tight">Abouts</h2>
-                <Link href="/abouts/create">
+                <h2 className="text-2xl font-bold tracking-tight">Authors</h2>
+                <Link href="/authors/create">
                     <Button>
                         <Plus className="mr-2 h-4 w-4" />
                         Add New
@@ -124,7 +138,7 @@ export function AboutsList() {
                 columns={columns}
                 data={data}
                 isLoading={isLoading}
-                searchPlaceholder="Search abouts..."
+                searchPlaceholder="Search authors..."
                 onSearch={actions.handleSearch}
                 searchValue={state.search}
                 meta={meta}
