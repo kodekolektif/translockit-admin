@@ -25,6 +25,8 @@ interface AnalyticsData {
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
+import { getSessionCache, setSessionCache } from '@/core/api/cache';
+
 export default function DashboardPage() {
     const [data, setData] = useState<DashboardData | null>(null);
     const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -33,18 +35,33 @@ export default function DashboardPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [dashboardRes, analyticsRes] = await Promise.allSettled([
-                    apiClient.get('/dashboard'),
-                    apiClient.get('/analytics')
-                ]);
+                const cachedDashboard = getSessionCache('cache_/dashboard');
+                const cachedAnalytics = getSessionCache('cache_/analytics');
 
-                if (dashboardRes.status === 'fulfilled') {
-                    setData(dashboardRes.value.data?.data || dashboardRes.value.data);
+                let fetchedDashboard = cachedDashboard;
+                let fetchedAnalytics = cachedAnalytics;
+
+                const promises = [];
+                if (!cachedDashboard) promises.push(apiClient.get('/dashboard'));
+                else promises.push(Promise.resolve(null));
+
+                if (!cachedAnalytics) promises.push(apiClient.get('/analytics'));
+                else promises.push(Promise.resolve(null));
+
+                const [dashboardRes, analyticsRes] = await Promise.allSettled(promises);
+
+                if (!cachedDashboard && dashboardRes.status === 'fulfilled' && dashboardRes.value) {
+                    fetchedDashboard = dashboardRes.value.data?.data || dashboardRes.value.data;
+                    if (fetchedDashboard) setSessionCache('cache_/dashboard', fetchedDashboard, 30);
                 }
 
-                if (analyticsRes.status === 'fulfilled') {
-                    setAnalytics(analyticsRes.value.data?.data || analyticsRes.value.data);
+                if (!cachedAnalytics && analyticsRes.status === 'fulfilled' && analyticsRes.value) {
+                    fetchedAnalytics = analyticsRes.value.data?.data || analyticsRes.value.data;
+                    if (fetchedAnalytics) setSessionCache('cache_/analytics', fetchedAnalytics, 30);
                 }
+
+                if (fetchedDashboard) setData(fetchedDashboard);
+                if (fetchedAnalytics) setAnalytics(fetchedAnalytics);
             } catch (error) {
                 console.error("Failed to fetch dashboard data:", error);
             } finally {

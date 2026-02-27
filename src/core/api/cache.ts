@@ -1,6 +1,7 @@
-export const setSessionCache = (key: string, data: any) => {
+export const setSessionCache = (key: string, data: any, ttlMinutes?: number) => {
     if (typeof window !== 'undefined') {
-        sessionStorage.setItem(key, JSON.stringify(data));
+        const item = ttlMinutes !== undefined ? { value: data, expiry: new Date().getTime() + ttlMinutes * 60 * 1000 } : data;
+        sessionStorage.setItem(key, JSON.stringify(item));
     }
 };
 
@@ -9,7 +10,15 @@ export const getSessionCache = (key: string) => {
         const cached = sessionStorage.getItem(key);
         if (cached) {
             try {
-                return JSON.parse(cached);
+                const parsed = JSON.parse(cached);
+                if (parsed && typeof parsed === 'object' && 'expiry' in parsed && 'value' in parsed) {
+                    if (new Date().getTime() > parsed.expiry) {
+                        sessionStorage.removeItem(key);
+                        return null;
+                    }
+                    return parsed.value;
+                }
+                return parsed;
             } catch (e) {
                 return null;
             }
