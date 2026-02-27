@@ -1,9 +1,10 @@
 'use client';
 
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import { Button } from '@/components/ui/button';
-import { Bold, Italic, List, ListOrdered, Undo, Redo } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html';
+import { $getRoot, $insertNodes } from 'lexical';
+import { Editor } from '@/components/blocks/editor-00/editor';
 
 interface RichEditorProps {
     value?: string;
@@ -11,85 +12,48 @@ interface RichEditorProps {
     placeholder?: string;
 }
 
+function LexicalHtmlPlugin({ initialHtml }: { initialHtml?: string }) {
+    const [editor] = useLexicalComposerContext();
+    const isInitialized = useRef(false);
+
+    useEffect(() => {
+        if (!initialHtml || isInitialized.current) return;
+        isInitialized.current = true;
+
+        editor.update(() => {
+            const parser = new DOMParser();
+            const dom = parser.parseFromString(initialHtml, 'text/html');
+            const nodes = $generateNodesFromDOM(editor, dom);
+
+            // Append the nodes to the root
+            const root = $getRoot();
+            root.clear(); // Clear default empty paragraph
+            root.select();
+            $insertNodes(nodes);
+        });
+    }, [editor, initialHtml]);
+
+    return null;
+}
+
 export function RichEditor({ value, onChange, placeholder }: RichEditorProps) {
-    const editor = useEditor({
-        extensions: [StarterKit],
-        content: value || `<p>${placeholder || ''}</p>`,
-        immediatelyRender: false,
-        onUpdate: ({ editor }) => {
-            onChange(editor.getHTML());
-        },
-        editorProps: {
-            attributes: {
-                class: 'min-h-[150px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm prose prose-sm max-w-none',
-            },
-        },
-    });
-
-    if (!editor) {
-        return null;
-    }
-
     return (
-        <div className="flex flex-col space-y-2 border rounded-md p-1">
-            <div className="flex flex-wrap items-center gap-1 border-b pb-1">
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => editor.chain().focus().toggleBold().run()}
-                    className={editor.isActive('bold') ? 'bg-muted' : ''}
-                >
-                    <Bold className="h-4 w-4" />
-                </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => editor.chain().focus().toggleItalic().run()}
-                    className={editor.isActive('italic') ? 'bg-muted' : ''}
-                >
-                    <Italic className="h-4 w-4" />
-                </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => editor.chain().focus().toggleBulletList().run()}
-                    className={editor.isActive('bulletList') ? 'bg-muted' : ''}
-                >
-                    <List className="h-4 w-4" />
-                </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                    className={editor.isActive('orderedList') ? 'bg-muted' : ''}
-                >
-                    <ListOrdered className="h-4 w-4" />
-                </Button>
-                <div className="flex-1" />
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => editor.chain().focus().undo().run()}
-                    disabled={!editor.can().undo()}
-                >
-                    <Undo className="h-4 w-4" />
-                </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => editor.chain().focus().redo().run()}
-                    disabled={!editor.can().redo()}
-                >
-                    <Redo className="h-4 w-4" />
-                </Button>
-            </div>
-            <EditorContent editor={editor} />
+        <div className="min-h-[150px] w-full">
+            <Editor
+                onChange={(editorState, editor) => {
+                    editorState.read(() => {
+                        const html = $generateHtmlFromNodes(editor, null);
+                        // The default empty Lexical editor generates `<p dir="ltr"><br></p>`
+                        if (html === '<p dir="ltr"><br></p>' || html === '<p><br></p>') {
+                            onChange('');
+                        } else {
+                            onChange(html);
+                        }
+                    });
+                }}
+            >
+                <LexicalHtmlPlugin initialHtml={value} />
+            </Editor>
         </div>
     );
 }

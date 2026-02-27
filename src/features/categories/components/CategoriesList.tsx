@@ -10,6 +10,8 @@ import { useDataTable } from '@/core/table/useDataTable';
 import { DataTable } from '@/core/table/DataTable';
 import { format } from 'date-fns';
 
+import { clearSessionCacheByPrefix } from '@/core/api/cache';
+
 interface CategoryItem {
     id: string;
     name: string;
@@ -31,6 +33,7 @@ export function CategoriesList() {
         if (!confirm('Are you sure you want to delete this category?')) return;
         try {
             await apiClient.delete(`/categories/${id}`);
+            clearSessionCacheByPrefix('cache_/categories');
             toast.success('Category deleted successfully');
             refetch();
         } catch (error) {

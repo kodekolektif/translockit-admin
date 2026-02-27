@@ -19,6 +19,8 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { apiClient } from '@/core/api/client';
 import { MultiLanguageForm } from '@/core/i18n-form/MultiLanguageForm';
+import { useQueryClient } from '@tanstack/react-query';
+import { clearSessionCacheByPrefix } from '@/core/api/cache';
 const categorySchema = z.object({
     name: z.object({
         en: z.string().min(1, 'English name is required'),
@@ -37,6 +39,7 @@ interface CategoryFormProps {
 
 export function CategoryForm({ initialData, categoryId }: CategoryFormProps) {
     const router = useRouter();
+    const queryClient = useQueryClient();
 
     const form = useForm<CategoryFormValues>({
         resolver: zodResolver(categorySchema),
@@ -73,6 +76,9 @@ export function CategoryForm({ initialData, categoryId }: CategoryFormProps) {
                 toast.success('Category created successfully');
             }
 
+            clearSessionCacheByPrefix('cache_/categories');
+            queryClient.invalidateQueries({ queryKey: ['categories'] });
+
             router.push('/categories');
             router.refresh();
         } catch (error: any) {
@@ -86,7 +92,7 @@ export function CategoryForm({ initialData, categoryId }: CategoryFormProps) {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                     <div className="space-y-8">
 
-                        <MultiLanguageForm translateEndpoint="/translate/categories">
+                        <MultiLanguageForm translateEndpoint="/translate" fieldsToTranslate={['name']}>
                             {(lang: string) => (
                                 <FormField
                                     control={form.control}

@@ -10,6 +10,8 @@ import { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
 import { apiClient } from '@/core/api/client';
 
+import { clearSessionCacheByPrefix } from '@/core/api/cache';
+
 interface AuthorItem {
     id: string;
     profile: string;
@@ -32,6 +34,7 @@ export function AuthorsList() {
         if (!confirm('Are you sure you want to delete this author?')) return;
         try {
             await apiClient.delete(`/authors/${id}`);
+            clearSessionCacheByPrefix('cache_/authors');
             toast.success('Author deleted successfully');
             refetch();
         } catch (error) {

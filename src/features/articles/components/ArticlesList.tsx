@@ -10,6 +10,8 @@ import { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
 import { apiClient } from '@/core/api/client';
 
+import { clearSessionCacheByPrefix } from '@/core/api/cache';
+
 interface ArticleItem {
     id: string; // Updated from number to string (UUID)
     thumbnail: string; // Updated from image to thumbnail
@@ -39,6 +41,7 @@ export function ArticlesList() {
         if (!confirm('Are you sure you want to delete this article?')) return;
         try {
             await apiClient.delete(`/articles/${id}`);
+            clearSessionCacheByPrefix('cache_/articles');
             toast.success('Article deleted successfully');
             refetch();
         } catch (error) {

@@ -21,6 +21,8 @@ import { ImageDropzone } from '@/core/upload/ImageDropzone';
 import { RichEditor } from '@/core/editor/RichEditor';
 import { apiClient } from '@/core/api/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useQueryClient } from '@tanstack/react-query';
+import { clearSessionCacheByPrefix } from '@/core/api/cache';
 
 const authorSchema = z.object({
     profile: z.any().optional(), // Can be string URL or File
@@ -49,6 +51,7 @@ interface AuthorFormProps {
 
 export function AuthorForm({ initialData, authorId }: AuthorFormProps) {
     const router = useRouter();
+    const queryClient = useQueryClient();
 
     const form = useForm<any>({
         resolver: zodResolver(authorSchema),
@@ -108,6 +111,9 @@ export function AuthorForm({ initialData, authorId }: AuthorFormProps) {
                 toast.success('Author created successfully');
             }
 
+            clearSessionCacheByPrefix('cache_/authors');
+            queryClient.invalidateQueries({ queryKey: ['authors'] });
+
             router.push('/authors');
             router.refresh();
         } catch (error: any) {
@@ -151,7 +157,7 @@ export function AuthorForm({ initialData, authorId }: AuthorFormProps) {
                             )}
                         />
 
-                        <MultiLanguageForm translateEndpoint="/translate/authors">
+                        <MultiLanguageForm translateEndpoint="/translate" fieldsToTranslate={['title', 'description']}>
                             {(lang: string) => (
                                 <>
                                     <FormField

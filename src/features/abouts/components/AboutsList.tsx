@@ -8,6 +8,8 @@ import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
+import { apiClient } from '@/core/api/client';
+import { clearSessionCacheByPrefix } from '@/core/api/cache';
 
 interface AboutItem {
     id: string;
@@ -21,10 +23,23 @@ interface AboutItem {
 }
 
 export function AboutsList() {
-    const { data, meta, isLoading, actions, state } = useDataTable<AboutItem>({
+    const { data, meta, isLoading, actions, state, refetch } = useDataTable<AboutItem>({
         endpoint: '/abouts',
         queryKey: ['abouts'],
     });
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this about?')) return;
+        try {
+            await apiClient.delete(`/abouts/${id}`);
+            clearSessionCacheByPrefix('cache_/abouts');
+            toast.success('About deleted successfully');
+            refetch();
+        } catch (error) {
+            toast.error('Failed to delete about');
+            console.error(error);
+        }
+    };
 
     const columns: ColumnDef<AboutItem>[] = [
         {
@@ -99,7 +114,7 @@ export function AboutsList() {
                                 <Edit className="h-4 w-4" />
                             </Button>
                         </Link>
-                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => toast.info('Delete is not implemented yet')}>
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(id)}>
                             <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>

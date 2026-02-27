@@ -21,6 +21,8 @@ import { MultiLanguageForm } from '@/core/i18n-form/MultiLanguageForm';
 import { ImageDropzone } from '@/core/upload/ImageDropzone';
 import { RichEditor } from '@/core/editor/RichEditor';
 import { apiClient } from '@/core/api/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { clearSessionCacheByPrefix } from '@/core/api/cache';
 
 const aboutSchema = z.object({
     image: z.any().optional(), // Can be string URL or File
@@ -45,6 +47,7 @@ interface AboutFormProps {
 
 export function AboutForm({ initialData, aboutId }: AboutFormProps) {
     const router = useRouter();
+    const queryClient = useQueryClient();
 
     const form = useForm<any>({
         resolver: zodResolver(aboutSchema),
@@ -103,6 +106,9 @@ export function AboutForm({ initialData, aboutId }: AboutFormProps) {
                 toast.success('About created effectively');
             }
 
+            clearSessionCacheByPrefix('cache_/abouts');
+            queryClient.invalidateQueries({ queryKey: ['abouts'] });
+
             router.push('/abouts');
             router.refresh();
         } catch (error: any) {
@@ -133,7 +139,7 @@ export function AboutForm({ initialData, aboutId }: AboutFormProps) {
                             )}
                         />
 
-                        <MultiLanguageForm translateEndpoint="/translate/abouts">
+                        <MultiLanguageForm translateEndpoint="/translate" fieldsToTranslate={['title', 'description']}>
                             {(lang) => (
                                 <>
                                     <FormField

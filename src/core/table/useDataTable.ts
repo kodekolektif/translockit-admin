@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
 
+import { getSessionCache, setSessionCache } from '../api/cache';
+
 export interface PaginationMeta {
     current_page: number;
     per_page: number;
@@ -35,14 +37,26 @@ export function useDataTable<T>({ endpoint, queryKey }: UseDataTableOptions) {
             params.append('direction', direction);
         }
 
-        const { data } = await apiClient.get<PaginatedResponse<T>>(`${endpoint}?${params.toString()}`);
+        const queryString = params.toString();
+        const cacheKey = `cache_${endpoint}?${queryString}`;
+
+        const cachedData = getSessionCache(cacheKey);
+        if (cachedData) {
+            return cachedData;
+        }
+
+        const { data } = await apiClient.get<PaginatedResponse<T>>(`${endpoint}?${queryString}`);
+
+        setSessionCache(cacheKey, data);
+
         return data;
     };
 
     const query = useQuery({
         queryKey: [...queryKey, page, perPage, search, sort, direction],
         queryFn: fetcher,
-        placeholderData: (prev) => prev, // keeps previous data while fetching new (like keepPreviousData)
+        staleTime: Infinity, // Rely on our explicit sessionStorage invalidation instead
+        placeholderData: (prev) => prev, // keeps previous data while fetching new
     });
 
     const handleSort = useCallback((column: string) => {

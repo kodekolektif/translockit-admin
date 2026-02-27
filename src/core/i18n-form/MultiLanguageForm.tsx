@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Loader2, Wand2, ChevronDown } from 'lucide-react';
@@ -9,43 +9,56 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 interface MultiLanguageFormProps {
     children: (lang: 'en' | 'es') => ReactNode;
     translateEndpoint?: string; // Endpoint to trigger the translation from the backend
+    fieldsToTranslate?: string[]; // Array of fields to translate, e.g. ['title', 'content']
 }
 
 export function MultiLanguageForm({
     children,
-    translateEndpoint,
+    translateEndpoint = '/translate', // Default to /translate
+    fieldsToTranslate = [],
 }: MultiLanguageFormProps) {
-    const { getValues, setValue, formState } = useFormContext();
-    const isTranslating = formState.isSubmitting; // Example state, a custom mutation is better
+    const { getValues, setValue } = useFormContext();
+    const [isTranslating, setIsTranslating] = useState(false);
 
     const handleTranslate = async () => {
-        if (!translateEndpoint) return;
+        if (!translateEndpoint || fieldsToTranslate.length === 0) return;
 
-        // Assumes translations.en is filled properly
-        const enData = getValues('translations.en');
-
-        if (!enData || !enData.title) {
-            toast.error('Please fill in the English title first');
-            return;
-        }
+        setIsTranslating(true);
 
         try {
-            toast.info('Translating to Spanish...');
-            const { data } = await apiClient.post(translateEndpoint, {
-                source: 'en',
-                target: 'es',
-                text: enData, // backend expects an object of fields to translate
+            const payloadData: { key: string; value: string }[] = [];
+
+            fieldsToTranslate.forEach(field => {
+                const enValue = getValues(`${field}.en`);
+                if (enValue) {
+                    payloadData.push({ key: field, value: enValue });
+                }
             });
 
-            // Assumes backend returns { title: '...', description: '...' }
-            if (data && data.translations) {
-                Object.keys(data.translations).forEach(key => {
-                    setValue(`translations.es.${key}`, data.translations[key], { shouldValidate: true, shouldDirty: true });
+            if (payloadData.length === 0) {
+                toast.error('Please fill in the English fields first');
+                setIsTranslating(false);
+                return;
+            }
+
+            toast.info('Translating to Spanish...');
+            const { data } = await apiClient.post(translateEndpoint, {
+                target_lang: 'es',
+                data: payloadData,
+            });
+
+            if (data && data.success && data.data && data.data.translations) {
+                data.data.translations.forEach((t: any) => {
+                    setValue(`${t.key}.es`, t.translated_text, { shouldValidate: true, shouldDirty: true });
                 });
                 toast.success('Translation completed');
+            } else {
+                toast.error('Failed to translate content: Invalid response');
             }
         } catch (error) {
             toast.error('Failed to translate content');
+        } finally {
+            setIsTranslating(false);
         }
     };
 

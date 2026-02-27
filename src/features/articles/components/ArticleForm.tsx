@@ -24,6 +24,8 @@ import { apiClient } from '@/core/api/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { clearSessionCacheByPrefix } from '@/core/api/cache';
 
 const articleSchema = z.object({
     thumbnail: z.any().optional(), // Can be string URL or File
@@ -51,6 +53,7 @@ interface ArticleFormProps {
 
 export function ArticleForm({ initialData, articleId }: ArticleFormProps) {
     const router = useRouter();
+    const queryClient = useQueryClient();
 
     const [categories, setCategories] = useState<any[]>([]);
     const [authors, setAuthors] = useState<any[]>([]);
@@ -133,6 +136,9 @@ export function ArticleForm({ initialData, articleId }: ArticleFormProps) {
                 toast.success('Article created effectively');
             }
 
+            clearSessionCacheByPrefix('cache_/articles');
+            queryClient.invalidateQueries({ queryKey: ['articles'] });
+
             router.push('/articles');
             router.refresh();
         } catch (error: any) {
@@ -163,7 +169,7 @@ export function ArticleForm({ initialData, articleId }: ArticleFormProps) {
                             )}
                         />
 
-                        <MultiLanguageForm translateEndpoint="/translate/articles">
+                        <MultiLanguageForm translateEndpoint="/translate" fieldsToTranslate={['title', 'content']}>
                             {(lang) => (
                                 <>
                                     <FormField
